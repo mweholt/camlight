@@ -141,6 +141,37 @@ final class Controller {
         }
     }
 
+    /// Restores the normal powered state for every controllable port. Pending delayed
+    /// changes are cancelled so they cannot immediately undo the reset.
+    func powerOnAllPorts() {
+        events.async {
+            self.pending.values.forEach { $0.cancel() }
+            self.pending.removeAll()
+
+            let hubs = HubScanner.scan()
+            guard !hubs.isEmpty else {
+                log("reset ports: no switchable USB hubs found")
+                self.notifyChanged()
+                return
+            }
+
+            let hubLocations = Set(hubs.map(\.location))
+            for light in self.settings.lights
+                where light.isConfigured && hubLocations.contains(light.hub) {
+                self.powered[light.id] = true
+            }
+
+            log("all ports on \(hubs.count) switchable USB hub\(hubs.count == 1 ? "" : "s") → on")
+            for hub in hubs {
+                var argv = [BundledUhubctl.executablePath, "-l", hub.location,
+                            "-a", "on", "-e"]
+                if self.settings.useSudo { argv = ["/usr/bin/sudo", "-n"] + argv }
+                self.send(argv, label: "USB hub \(hub.location)")
+            }
+            self.notifyChanged()
+        }
+    }
+
     func setAutomation(_ enabled: Bool) {
         events.async {
             guard self.settings.automationEnabled != enabled else { return }
@@ -161,10 +192,14 @@ final class Controller {
             let previous = self.settings
 
             for light in previous.lights where self.powered[light.id] == true {
-                let replacement = merged.lights.first { $0.id == light.id }
-                let samePort = replacement.map {
-                    $0.hub == light.hub && $0.port == light.port && $0.exactPort == light.exactPort
-                } ?? false
+                // Removing a light stops managing it; it must not alter the physical port.
+                guard let replacement = merged.lights.first(where: { $0.id == light.id }) else {
+                    log("\(light.name) removed (port left on)")
+                    continue
+                }
+                let samePort = replacement.hub == light.hub
+                    && replacement.port == light.port
+                    && replacement.exactPort == light.exactPort
                 if !samePort {
                     log("\(light.name) → off (settings changed)")
                     self.send(self.command(for: light, on: false, in: previous), label: light.name)

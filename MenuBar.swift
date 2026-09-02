@@ -100,6 +100,7 @@ final class MenuBarController: NSObject {
         menu.addItem(disable)
 
         menu.addItem(.separator())
+        menu.addItem(item("Reset All Ports to On", #selector(powerOnAllPorts(_:))))
         menu.addItem(item("Settings…", #selector(openSettings(_:)), key: ","))
 
         let login = item("Open at login", #selector(toggleLoginItem(_:)))
@@ -125,6 +126,7 @@ final class MenuBarController: NSObject {
 
     @objc private func enableAutomation(_ sender: Any?) { controller.setAutomation(true) }
     @objc private func disableAutomation(_ sender: Any?) { controller.setAutomation(false) }
+    @objc private func powerOnAllPorts(_ sender: Any?) { controller.powerOnAllPorts() }
 
     @objc func openSettings(_ sender: Any?) {
         if settingsWindow?.window?.isVisible != true {

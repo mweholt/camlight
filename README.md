@@ -55,7 +55,10 @@ make test
    Delete while recording to disable the shortcut.
 
 Left-clicking the menu-bar icon or pressing the hotkey toggles all configured
-lights. Right-clicking opens the app menu.
+lights. Right-clicking opens the app menu, where **Reset All Ports to On** can
+restore every port on every discovered switchable USB hub. Removing a light
+from camlight only stops managing it; removal does not change that port's
+current power state.
 
 ## License
 
