@@ -34,8 +34,11 @@ $(APP): $(SOURCES) Info.plist Assets/AppIcon.icns $(HELPER)
 clean:
 	rm -rf $(APP) .build
 
-test: Settings.swift Tests/HubScannerTests.swift
+test: Camera.swift Settings.swift Controller.swift Tests/HubScannerTests.swift Tests/ControllerTests.swift
 	swiftc Settings.swift Tests/HubScannerTests.swift -o /tmp/camlight-hub-scanner-tests
 	/tmp/camlight-hub-scanner-tests
+	swiftc Camera.swift Settings.swift Controller.swift Tests/ControllerTests.swift \
+		-framework CoreMediaIO -o /tmp/camlight-controller-tests
+	/tmp/camlight-controller-tests
 
 .PHONY: all clean test

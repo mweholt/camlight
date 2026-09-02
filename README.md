@@ -58,7 +58,8 @@ Left-clicking the menu-bar icon or pressing the hotkey toggles all configured
 lights. Right-clicking opens the app menu, where **Reset All Ports to On** can
 restore every port on every discovered switchable USB hub. Removing a light
 from camlight only stops managing it; removal does not change that port's
-current power state.
+current power state. A newly added light is initially assumed to be on, so
+adding it does not immediately switch off its port.
 
 ## License
 

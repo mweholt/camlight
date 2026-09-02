@@ -79,9 +79,10 @@ final class Controller {
 
     // MARK: deciding
 
-    private func evaluate() {
+    private func evaluate(excluding excludedLightIDs: Set<UUID> = []) {
         guard settings.automationEnabled else { return }
-        for light in settings.lights where light.isConfigured {
+        for light in settings.lights
+            where light.isConfigured && !excludedLightIDs.contains(light.id) {
             let desired = cameraActive(for: light)
             if powered[light.id] == desired {
                 pending[light.id]?.cancel()      // cancels a scheduled off when the camera comes back
@@ -184,12 +185,19 @@ final class Controller {
     }
 
     /// Applies edits from the settings window. Only lights whose port actually moved get
-    /// switched off, so renaming one doesn't power-cycle it.
+    /// switched off, so renaming one doesn't power-cycle it. A newly configured light is
+    /// assumed to be on and excluded from the initial automation evaluation.
     func update(settings newSettings: AppSettings) {
         events.async {
             var merged = newSettings
             merged.automationEnabled = self.settings.automationEnabled   // the menu owns this
             let previous = self.settings
+            let previouslyConfiguredIDs = Set(previous.lights.filter(\.isConfigured).map(\.id))
+            let newlyConfiguredIDs = Set<UUID>(merged.lights.compactMap { light in
+                guard light.isConfigured,
+                      !previouslyConfiguredIDs.contains(light.id) else { return nil }
+                return light.id
+            })
 
             for light in previous.lights where self.powered[light.id] == true {
                 // Removing a light stops managing it; it must not alter the physical port.
@@ -212,11 +220,14 @@ final class Controller {
             self.pending = self.pending.filter { liveIDs.contains($0.key) }
             self.powered = self.powered.filter { liveIDs.contains($0.key) }
 
+            for light in merged.lights where newlyConfiguredIDs.contains(light.id) {
+                self.powered[light.id] = true
+                log("\(light.name) added (port left on)")
+            }
+
             self.settings = merged
             merged.save()
-            self.settled = false      // establish a known state for anything new
-            self.evaluate()
-            self.settled = true
+            self.evaluate(excluding: newlyConfiguredIDs)
             self.notifyChanged()
         }
     }
